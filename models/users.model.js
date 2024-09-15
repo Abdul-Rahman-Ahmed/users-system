@@ -28,6 +28,12 @@ const userSchema = new mongoose.Schema({
   },
   confirmToken: String,
   confirmTokenExpires: Date,
+  activities: [
+    {
+      activity: { type: String, required: true },
+      timestamp: { type: Date, default: Date.now },
+    },
+  ],
 });
 
 const User = mongoose.model("User", userSchema);

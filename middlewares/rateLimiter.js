@@ -4,7 +4,7 @@ const requestStatus = require("../utils/requestStatus");
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,
-  handler: (req, res, options) => {
+  handler: (req, res, next, options) => {
     const retryAfterSeconds = Math.ceil(options.windowMs / 1000);
     return res.status(429).json({
       status: requestStatus.FAIL,
