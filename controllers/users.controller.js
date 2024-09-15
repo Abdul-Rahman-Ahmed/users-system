@@ -5,15 +5,18 @@ const appError = require("../utils/appError");
 const requestStatus = require("../utils/requestStatus");
 const validator = require("validator");
 const newToken = require("../utils/newToken");
+const nodemailer = require("nodemailer");
 
 const register = asyncWrapper(async (req, res, next) => {
   const { name, email, password } = req.body;
+
   // check empty fields
   if (!name || !email || !password) {
     return next(
       appError.create(400, requestStatus.FAIL, "All fields are required")
     );
   }
+
   // check if user already exists
   const oldUser = await User.findOne({ email: email });
   if (oldUser) {
@@ -21,12 +24,14 @@ const register = asyncWrapper(async (req, res, next) => {
       appError.create(400, requestStatus.FAIL, "This User Already exists")
     );
   }
+
   // check email format
   if (!validator.isEmail(email)) {
     return next(
       appError.create(400, requestStatus.FAIL, "Invalid email format")
     );
   }
+
   // check password, add user to database
   if (
     !validator.isStrongPassword(password, {
@@ -39,22 +44,46 @@ const register = asyncWrapper(async (req, res, next) => {
   ) {
     return next(appError.create(400, requestStatus.FAIL, "Weak password"));
   }
+
+  // hash password
   const hashPassword = await bcrypt.hash(
     password,
     parseInt(process.env.SALT_ROUND) || 10
   );
+
+  // create new user
   const newUser = new User({
     name,
     email,
     password: hashPassword,
+    confirmTokenExpires: Date.now() + 3600000,
   });
-  await newUser.save();
 
+  // generate new toten
   const token = await newToken({
     email,
     userId: newUser._id,
     role: newUser.role,
   });
+  newUser.confirmToken = token;
+  await newUser.save();
+
+  // send confirm email
+  const transporter = nodemailer.createTransport({
+    service: "Gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: newUser.email,
+    subject: "Confirm Your Email",
+    text: `Please confirm your email by clicking the following link: http://localhost:4000/api/users/confirm/${token}`,
+  });
+
   return res.status(201).json({
     status: requestStatus.SUCCESS,
     code: 201,
@@ -65,6 +94,7 @@ const register = asyncWrapper(async (req, res, next) => {
 
 const login = asyncWrapper(async (req, res, next) => {
   const { email, password } = req.body;
+
   // check email and password
   if (!email || !password) {
     return next(
@@ -95,7 +125,7 @@ const login = asyncWrapper(async (req, res, next) => {
     );
   }
 
-  // generate new jwt
+  // generate new token
   const token = await newToken({ email, userId: user._id, role: user.role });
 
   return res.status(200).json({
@@ -110,4 +140,69 @@ const getUsers = asyncWrapper(async (req, res) => {
   const users = await User.find();
   return res.status(200).json(users);
 });
-module.exports = { register, login, getUsers };
+
+const confirmEmail = asyncWrapper(async (req, res, next) => {
+  const token = req.params.token;
+
+  // find the user
+  const user = await User.findOne({
+    confirmToken: token,
+    confirmTokenExpires: { $gt: Date.now() },
+  });
+
+  // check user if isn't exists
+  if (!user || user.confirmTokenExpires < Date.now()) {
+    if (user) {
+      const newToken = await newToken({
+        email: user.email,
+        userId: user._id,
+        role: user.role,
+      });
+      user.confirmToken = newToken;
+      user.confirmTokenExpires = Date.now() + 3600000;
+      await user.save();
+
+      const transporter = nodemailer.createTransport({
+        service: "Gmail",
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: "Resend Confirmation Email",
+        text: `Please confirm your email by clicking the following link: http://localhost:4000/api/users/confirm/${newToken}`,
+      });
+
+      return res.status(200).json({
+        status: requestStatus.SUCCESS,
+        code: 200,
+        message: "Token expired. A new confirmation email has been sent.",
+      });
+    }
+    return next(
+      appError.create(
+        400,
+        requestStatus.FAIL,
+        "Token is invalid or has expired"
+      )
+    );
+  }
+
+  // confirm email
+  user.isActive = true;
+  user.confirmToken = undefined;
+  user.confirmTokenExpires = undefined;
+  await user.save();
+
+  res.status(200).json({
+    status: requestStatus.SUCCESS,
+    code: 200,
+    message: "Email confirmed successfully, your account is now active",
+  });
+});
+
+module.exports = { register, login, getUsers, confirmEmail };

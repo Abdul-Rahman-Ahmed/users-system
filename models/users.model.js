@@ -11,7 +11,6 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     trim: true,
-    index: true,
   },
   password: {
     type: String,
@@ -27,6 +26,8 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  confirmToken: String,
+  confirmTokenExpires: Date,
 });
 
 const User = mongoose.model("User", userSchema);
