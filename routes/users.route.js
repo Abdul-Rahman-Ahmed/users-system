@@ -7,6 +7,8 @@ const {
   confirmEmail,
   forgetPassword,
   resetPassword,
+  deleteUser,
+  confirmDelete,
 } = require("../controllers/users.controller");
 const verifyToken = require("../middlewares/verifyToken");
 const verifyRole = require("../middlewares/verifyRole");
@@ -19,5 +21,7 @@ Router.get("/", verifyToken, verifyRole(Roles.ADMIN), getUsers);
 Router.get("/confirm/:token", confirmEmail);
 Router.post("/forget-password", forgetPassword);
 Router.post("/reset-password/:token", resetPassword);
+Router.delete("/delete", verifyToken, deleteUser);
+Router.delete("/delete/:token", confirmDelete);
 
 module.exports = Router;

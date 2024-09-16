@@ -29,6 +29,11 @@ class checkPassword {
     );
     return hashPassword;
   }
+
+  async compare(password, hashPassword) {
+    const checkPassword = await bcrypt.compare(password, hashPassword);
+    return checkPassword;
+  }
 }
 
 module.exports = new checkPassword();

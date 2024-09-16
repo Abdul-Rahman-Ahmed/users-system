@@ -1,5 +1,4 @@
 const User = require("../models/users.model");
-const bcrypt = require("bcryptjs");
 const asyncWrapper = require("../middlewares/asyncWrapper");
 const appError = require("../utils/appError");
 const requestStatus = require("../utils/requestStatus");
@@ -92,8 +91,12 @@ const login = asyncWrapper(async (req, res, next) => {
   }
 
   // check password
-  const checkPassword = await bcrypt.compare(password, user.password);
-  if (!checkPassword) {
+
+  const checkHashPassword = await checkPassword.compare(
+    password,
+    user.password
+  );
+  if (!checkHashPassword) {
     return next(appError.create(400, requestStatus.FAIL, "Wrong password"));
   }
 
@@ -123,6 +126,10 @@ const login = asyncWrapper(async (req, res, next) => {
 });
 
 const getUsers = asyncWrapper(async (req, res) => {
+  const id = req.currentUser.userId;
+  const user = await User.findById(id);
+  user.activities.push({ activity: "get all users" });
+  await user.save();
   const users = await User.find();
   return res.status(200).json(users);
 });
@@ -149,20 +156,11 @@ const confirmEmail = asyncWrapper(async (req, res, next) => {
       user.activities.push({ activity: "Resend confirm email" });
       await user.save();
 
-      const transporter = nodemailer.createTransport({
-        service: "Gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: user.email,
-        subject: "Resend Confirmation Email",
-        text: `Please confirm your email by clicking the following link: http://localhost:4000/api/users/confirm/${newToken}`,
-      });
+      sendMail.content(
+        user.email,
+        "Resend Confirmation Email",
+        `Please confirm your email by clicking the following link: http://localhost:4000/api/users/confirm/${newToken}`
+      );
 
       return res.status(200).json({
         status: requestStatus.SUCCESS,
@@ -272,6 +270,76 @@ const resetPassword = asyncWrapper(async (req, res, next) => {
   });
 });
 
+const deleteUser = asyncWrapper(async (req, res, next) => {
+  const { password } = req.body;
+  if (!password) {
+    return next(
+      appError.create(400, requestStatus.FAIL, "Password is required")
+    );
+  }
+
+  const email = req.currentUser.email;
+  const user = await User.findOne({ email });
+  if (!user) {
+    return next(appError.create(404, requestStatus.FAIL, "User not found"));
+  }
+
+  const checkHashPassword = await checkPassword.compare(
+    password,
+    user.password
+  );
+
+  if (!checkHashPassword) {
+    return next(appError.create(400, requestStatus.FAIL, "Wrong password"));
+  }
+  const token = await newToken({ email });
+  sendMail.content(
+    email,
+    "Confirm Deletion of Your Account",
+    `Please confirm the deletion of your account by clicking the following link: http://localhost:4000/api/users/delete/${token}`
+  );
+
+  user.confirmToken = token;
+  user.confirmTokenExpires = Date.now() + 3600000;
+  await user.save();
+
+  return res.json({
+    code: 200,
+    status: "success",
+    message: "Confirmation email to delete user sent successfully",
+    token,
+  });
+});
+
+const confirmDelete = asyncWrapper(async (req, res, next) => {
+  const token = req.params.token;
+
+  // find the user
+  const user = await User.findOne({
+    confirmToken: token,
+    confirmTokenExpires: { $gt: Date.now() },
+  });
+
+  // check user if isn't exists
+  if (!user || user.confirmTokenExpires < Date.now()) {
+    return next(
+      appError.create(
+        400,
+        requestStatus.FAIL,
+        "Token is invalid or has expired"
+      )
+    );
+  }
+
+  // confirm delte email
+  await user.deleteOne();
+  return res.json({
+    code: 200,
+    status: "success",
+    message: "user deleted successfully",
+  });
+});
+
 module.exports = {
   register,
   login,
@@ -279,4 +347,6 @@ module.exports = {
   confirmEmail,
   forgetPassword,
   resetPassword,
+  deleteUser,
+  confirmDelete,
 };
