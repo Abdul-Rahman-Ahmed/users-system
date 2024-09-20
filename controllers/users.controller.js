@@ -4,7 +4,6 @@ const appError = require("../utils/appError");
 const requestStatus = require("../utils/requestStatus");
 const validator = require("validator");
 const newToken = require("../utils/newToken");
-const nodemailer = require("nodemailer");
 const sendMail = require("../utils/sendMail");
 const checkPassword = require("../utils/checkPassword");
 
@@ -22,7 +21,7 @@ const register = asyncWrapper(async (req, res, next) => {
   const oldUser = await User.findOne({ email: email });
   if (oldUser) {
     return next(
-      appError.create(400, requestStatus.FAIL, "This User Already exists")
+      appError.create(409, requestStatus.FAIL, "This User Already exists")
     );
   }
 
@@ -87,11 +86,10 @@ const login = asyncWrapper(async (req, res, next) => {
   // check user
   const user = await User.findOne({ email: email });
   if (!user) {
-    return next(appError.create(400, requestStatus.FAIL, "User not found"));
+    return next(appError.create(404, requestStatus.FAIL, "User not found"));
   }
 
   // check password
-
   const checkHashPassword = await checkPassword.compare(
     password,
     user.password
@@ -131,7 +129,11 @@ const getUsers = asyncWrapper(async (req, res) => {
   user.activities.push({ activity: "get all users" });
   await user.save();
   const users = await User.find();
-  return res.status(200).json(users);
+  return res.status(200).json({
+    code: 200,
+    status: "success",
+    message: users,
+  });
 });
 
 const confirmEmail = asyncWrapper(async (req, res, next) => {
@@ -166,15 +168,10 @@ const confirmEmail = asyncWrapper(async (req, res, next) => {
         status: requestStatus.SUCCESS,
         code: 200,
         message: "Token expired. A new confirmation email has been sent.",
+        token,
       });
     }
-    return next(
-      appError.create(
-        400,
-        requestStatus.FAIL,
-        "Token is invalid or has expired"
-      )
-    );
+    return next(appError.create(403, requestStatus.ERROR, "Token has expired"));
   }
 
   // confirm email
@@ -199,9 +196,7 @@ const forgetPassword = asyncWrapper(async (req, res, next) => {
 
   const user = await User.findOne({ email });
   if (!user) {
-    return next(
-      appError.create(400, requestStatus.ERROR, "this user not exists")
-    );
+    return next(appError.create(404, requestStatus.FAIL, "User not found"));
   }
 
   const token = await newToken({ email });
@@ -238,19 +233,15 @@ const resetPassword = asyncWrapper(async (req, res, next) => {
   }
 
   const user = await User.findOne({ confirmToken: token });
-  if (!user) {
-    return next(appError.create(404, requestStatus.ERROR, "User not found"));
+  if (!user || user.confirmTokenExpires < Date.now()) {
+    if (user) {
+      return next(
+        appError.create(401, requestStatus.ERROR, "Token is invalid")
+      );
+    }
+    return next(appError.create(403, requestStatus.ERROR, "Token has expired"));
   }
 
-  if (user.confirmTokenExpires < Date.now()) {
-    return next(
-      appError.create(
-        400,
-        requestStatus.ERROR,
-        "Token is invalid or has expired"
-      )
-    );
-  }
   // check password, add user to database
   if (checkPassword.isWeakPassword(password)) {
     return next(appError.create(400, requestStatus.FAIL, "Weak password"));
@@ -322,13 +313,12 @@ const confirmDelete = asyncWrapper(async (req, res, next) => {
 
   // check user if isn't exists
   if (!user || user.confirmTokenExpires < Date.now()) {
-    return next(
-      appError.create(
-        400,
-        requestStatus.FAIL,
-        "Token is invalid or has expired"
-      )
-    );
+    if (user) {
+      return next(
+        appError.create(401, requestStatus.ERROR, "Token is invalid")
+      );
+    }
+    return next(appError.create(403, requestStatus.ERROR, "Token has expired"));
   }
 
   // confirm delte email

@@ -22,6 +22,6 @@ Router.get("/confirm/:token", confirmEmail);
 Router.post("/forget-password", forgetPassword);
 Router.post("/reset-password/:token", resetPassword);
 Router.delete("/delete", verifyToken, deleteUser);
-Router.delete("/delete/:token", confirmDelete);
+Router.get("/delete/:token", confirmDelete);
 
 module.exports = Router;

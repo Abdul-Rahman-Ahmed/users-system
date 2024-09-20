@@ -8,14 +8,14 @@ const verifyToken = (req, res, next) => {
     return next(
       appError.create(
         401,
-        requestStatus.ERROR,
+        requestStatus.FAIL,
         "Authorization header is missing or malformed"
       )
     );
   }
   const token = authHeader.split(" ")[1];
   if (!token) {
-    return next(appError.create(401, requestStatus.ERROR, "Token is required"));
+    return next(appError.create(401, requestStatus.FAIL, "Token is required"));
   }
   try {
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET_KEY);

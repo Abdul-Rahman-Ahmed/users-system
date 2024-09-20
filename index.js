@@ -32,9 +32,9 @@ app.use("*", (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  return res.status(err.status || 500).json({
-    status: requestStatus.ERROR,
-    code: err.status || 500,
+  return res.status(err.codeStatus || 500).json({
+    status: err.errorStatus || requestStatus.ERROR,
+    code: err.codeStatus || 500,
     message: err.message || "An unexpected error occurred",
   });
 });

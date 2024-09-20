@@ -4,8 +4,10 @@ const requestStatus = require("../utils/requestStatus");
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,
-  handler: (req, res, next, options) => {
-    const retryAfterSeconds = Math.ceil(options.windowMs / 1000);
+  handler: (req, res) => {
+    const retryAfterSeconds = Math.ceil(
+      (req.rateLimit.resetTime - Date.now()) / 1000
+    );
     return res.status(429).json({
       status: requestStatus.FAIL,
       code: 429,
@@ -19,9 +21,10 @@ const registerLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  handler: (req, res, next, options) => {
-    console.log(req.headers["retry-after"]);
-    const retryAfterSeconds = Math.ceil(options.windowMs / 1000);
+  handler: (req, res) => {
+    const retryAfterSeconds = Math.ceil(
+      (req.rateLimit.resetTime - Date.now()) / 1000
+    );
     return res.status(429).json({
       status: requestStatus.FAIL,
       code: 429,
