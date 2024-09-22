@@ -1,0 +1,571 @@
+{
+  "info": {
+    "_postman_id": "d6b0a665-06be-403d-abae-f8815c066349",
+    "name": "User Management System",
+    "description": "A **User Management System** built with Node.js, Express.js, MongoDB, and JWT for secure authentication and role-based access control (RBAC).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+    "_exporter_id": "37106086"
+  },
+  "item": [
+    {
+      "name": "CRUD Operations",
+      "item": [
+        {
+          "name": "register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();\r",
+                  "let codeStatus = jsonData.code;\r",
+                  "\r",
+                  "// ========================= If success ===============================\r",
+                  "pm.test(\"Status code is \" + codeStatus, () => {\r",
+                  "  pm.response.to.have.status(codeStatus);\r",
+                  "});\r",
+                  "\r",
+                  "if (codeStatus === 201) {\r",
+                  "  pm.environment.set(\"JWT\", jsonData.token);\r",
+                  "  pm.test(\"Response contains success message\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"success\");\r",
+                  "    pm.expect(jsonData.message).to.eql(\"Registration successful\");\r",
+                  "    pm.expect(jsonData).to.have.property(\"token\");\r",
+                  "  });\r",
+                  "}\r",
+                  "// ========================= If failure ===============================\r",
+                  "else if (codeStatus === 400) {\r",
+                  "  // =================== If empty field ========================\r",
+                  "  if (jsonData.message === \"All fields are required\") {\r",
+                  "    pm.test(\"Response contains error message for empty fields\", () => {\r",
+                  "      pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "      pm.expect(jsonData.message).to.eql(\"All fields are required\");\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Invalid email format\") {\r",
+                  "    // ================= If user wrong format email ======================\r",
+                  "    pm.test(\"Response contains invalid email error message\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Invalid email format\");\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Weak password\") {\r",
+                  "    // ================= If user weak password ======================\r",
+                  "    pm.test(\"Response contains weak password error message\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Weak password\");\r",
+                  "    });\r",
+                  "  }\r",
+                  "} else if (codeStatus === 409) {\r",
+                  "  // ================= If user already exists ======================\r",
+                  "  pm.test(\"Response contains error message for existing user\", () => {\r",
+                  "    pm.expect(jsonData.message).to.eql(\"This User Already exists\");\r",
+                  "  });\r",
+                  "} else if (codeStatus === 429) {\r",
+                  "    pm.test(\"response contains error message for too many\", () => {\r",
+                  "        pm.expect(jsonData.message).contain(\"Too many\")\r",
+                  "    })\r",
+                  "};\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\": \"username 1\",\r\n    \"email\": \"email1@gmail.com\",\r\n    \"password\": \"StrongPassword@#1\"\r\n    }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{BASE_URL}}/api/users/register",
+            "description": "Allows new users to register in the system. It requires basic user data."
+          },
+          "response": []
+        },
+        {
+          "name": "getUsers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();\r",
+                  "let codeStatus = jsonData.code;\r",
+                  "\r",
+                  "pm.test(\"Status code is \" + codeStatus, () => {\r",
+                  "  pm.response.to.have.status(codeStatus);\r",
+                  "});\r",
+                  "if (codeStatus === 200) {\r",
+                  "  pm.test(\"success message\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"success\");\r",
+                  "  });\r",
+                  "} else if (codeStatus === 401) {\r",
+                  "  if (jsonData.message === \"Invalid or expired token\") {\r",
+                  "    pm.test(\"Authentication required\", () => {\r",
+                  "      pm.expect((jsonData.message = \"Invalid or expired token\"));\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Authentication required\") {\r",
+                  "    pm.test(\"Authentication required\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Authentication required\");\r",
+                  "    });\r",
+                  "  } else if (\r",
+                  "    jsonData.message === \"Authorization header is missing or malformed\"\r",
+                  "  ) {\r",
+                  "    pm.test(\"Authorization header is missing or malformed\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\r",
+                  "        \"Authorization header is missing or malformed\"\r",
+                  "      );\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Token is required\") {\r",
+                  "    pm.test(\"Token is required\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Token is required\");\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Invalid or expired token\") {\r",
+                  "    pm.test(\"Invalid or expired token\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Invalid or expired token\");\r",
+                  "    });\r",
+                  "  }\r",
+                  "} else if (codeStatus === 403) {\r",
+                  "  pm.test(\"specifc action\", () => {\r",
+                  "    pm.expect(jsonData.message).to.contain(\r",
+                  "      \"is not allowed to perform this action\"\r",
+                  "    );\r",
+                  "  });\r",
+                  "}\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{BASE_URL}}/api/users",
+            "description": "This retrieves all users in the system. Accessing this endpoint requires the user to have administrative privileges"
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();\r",
+                  "let codeStatus = jsonData.code;\r",
+                  "pm.test(\"Status code is \" + codeStatus, () => {\r",
+                  "  pm.response.to.have.status(codeStatus);\r",
+                  "});\r",
+                  "// ========================= If success ===============================\r",
+                  "if (codeStatus === 200) {\r",
+                  "  pm.environment.set(\"JWT\", jsonData.token);\r",
+                  "  pm.test(\"Response contains success message\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"success\");\r",
+                  "    pm.expect(jsonData.message).to.eql(\r",
+                  "      \"Confirmation email to delete user sent successfully\"\r",
+                  "    );\r",
+                  "  });\r",
+                  "}\r",
+                  "// ========================= If failure ===============================\r",
+                  "else if (codeStatus === 400) {\r",
+                  "  if (jsonData.message === \"Password is required\") {\r",
+                  "    pm.test(\"Response contains error message for Password is required\", () => {\r",
+                  "      pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Password is required\");\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Wrong password\") {\r",
+                  "    pm.test(\"Response contains error message for Wrong password\", () => {\r",
+                  "      pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Wrong password\");\r",
+                  "    });\r",
+                  "  }\r",
+                  "} else if (codeStatus === 404) {\r",
+                  "  pm.test(\"Response contains error message User not found\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "    pm.expect(jsonData.message).to.eql(\"User not found\");\r",
+                  "  });\r",
+                  "} else if (codeStatus === 401) {\r",
+                  "  if (jsonData.message === \"Authorization header is missing or malformed\") {\r",
+                  "    pm.test(\"Authorization header is missing or malformed\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\r",
+                  "        \"Authorization header is missing or malformed\"\r",
+                  "      );\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Token is required\") {\r",
+                  "    pm.test(\"Token is required\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Token is required\");\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Invalid or expired token\") {\r",
+                  "    pm.test(\"Invalid or expired token\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Invalid or expired token\");\r",
+                  "    });\r",
+                  "  }\r",
+                  "}\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"password\": \"StrongPassword@#1\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{BASE_URL}}/api/users/delete",
+            "description": "This request is used to delete a user account. The request must include an authorized token."
+          },
+          "response": []
+        }
+      ],
+      "description": "This folder contains all the basic operations for creating, reading, updating, and deleting resources (CRUD) related to users. Each operation is clearly organized for easy testing and execution."
+    },
+    {
+      "name": "User Authentication",
+      "item": [
+        {
+          "name": "login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();\r",
+                  "let codeStatus = jsonData.code;\r",
+                  "pm.environment.set(\"JWT\", jsonData.token)\r",
+                  "pm.test(\"Status code is \" + codeStatus, () => {\r",
+                  "  pm.response.to.have.status(codeStatus);\r",
+                  "});\r",
+                  "// ========================= If success ===============================\r",
+                  "if (codeStatus === 200) {\r",
+                  "  pm.test(\"Response contains success message\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"success\");\r",
+                  "    pm.expect(jsonData.message).to.eql(\"Successful login\");\r",
+                  "    pm.expect(jsonData).to.have.property(\"token\");\r",
+                  "  });\r",
+                  "}\r",
+                  "// ========================= If failure ===============================\r",
+                  "else if (codeStatus === 400) {\r",
+                  "  // =================== If empty field ========================\r",
+                  "  if (jsonData.message === \"All fields are required\") {\r",
+                  "    pm.test(\"Response contains error message for empty fields\", () => {\r",
+                  "      pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "      pm.expect(jsonData.message).to.eql(\"All fields are required\");\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"User not found\") {\r",
+                  "    pm.test(\"Response contains user not found error message\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\"User not found\");\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Wrong password\") {\r",
+                  "    // ================= If user weak password ======================\r",
+                  "    pm.test(\"Response contains Wrong password error message\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Wrong password\");\r",
+                  "    });\r",
+                  "  }\r",
+                  "} else if (codeStatus === 403) {\r",
+                  "  // ================= If user already exists ======================\r",
+                  "  pm.test(\"Response contains error message for the user isn't active\", () => {\r",
+                  "    pm.expect(jsonData.message).to.eql(\r",
+                  "      \"Account is not active. Please verify your email.\"\r",
+                  "    );\r",
+                  "  });\r",
+                  "} else if (codeStatus === 429) {\r",
+                  "    pm.test(\"response contains error message for too many\", () => {\r",
+                  "        pm.expect(jsonData.message).contain(\"Too many\")\r",
+                  "    })\r",
+                  "};\r",
+                  "\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"email1@gmail.com\",\r\n    \"password\": \"StrongPassword@#1\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{BASE_URL}}/api/users/login",
+            "description": "Used for user login. It requires email and password."
+          },
+          "response": []
+        },
+        {
+          "name": "confirmEmail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();\r",
+                  "let codeStatus = jsonData.code;\r",
+                  "pm.test(\"Status code is \" + codeStatus, () => {\r",
+                  "  pm.response.to.have.status(codeStatus);\r",
+                  "});\r",
+                  "// ========================= If success ===============================\r",
+                  "if (codeStatus === 200) {\r",
+                  "  pm.environment.set(\"JWT\", jsonData.token);\r",
+                  "  pm.test(\"Response contains success message\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"success\");\r",
+                  "  });\r",
+                  "  if (\r",
+                  "    jsonData.message ===\r",
+                  "    \"Email confirmed successfully, your account is now active\"\r",
+                  "  ) {\r",
+                  "    pm.test(\"Response contains success message\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\r",
+                  "        \"Email confirmed successfully, your account is now active\"\r",
+                  "      );\r",
+                  "    });\r",
+                  "  } else {\r",
+                  "    pm.test(\"Response contains success message\", () => {\r",
+                  "      pm.expect(jsonData.message).to.eql(\r",
+                  "        \"Token expired. A new confirmation email has been sent.\"\r",
+                  "      );\r",
+                  "      pm.expect(jsonData).to.have.property(\"token\");\r",
+                  "    });\r",
+                  "  }\r",
+                  "}\r",
+                  "// ========================= If failure ===============================\r",
+                  "else if (codeStatus === 400) {\r",
+                  "  pm.test(\r",
+                  "    \"Response contains error message for Token is invalid or has expired\",\r",
+                  "    () => {\r",
+                  "      pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Token is invalid or has expired\");\r",
+                  "    }\r",
+                  "  );\r",
+                  "}\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{BASE_URL}}/api/users/confirm/{{JWT}}",
+            "description": "Used to confirm the user's email. It requires the confirmation token sent via email."
+          },
+          "response": []
+        },
+        {
+          "name": "forgetPassword",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();\r",
+                  "let codeStatus = jsonData.code;\r",
+                  "pm.test(\"Status code is \" + codeStatus, () => {\r",
+                  "  pm.response.to.have.status(codeStatus);\r",
+                  "});\r",
+                  "// ========================= If success ===============================\r",
+                  "if (codeStatus === 200) {\r",
+                  "  pm.environment.set(\"JWT\", jsonData.token);\r",
+                  "  pm.test(\"Response contains success message\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"success\");\r",
+                  "    pm.expect(jsonData).to.have.property(\"token\");\r",
+                  "    pm.expect(jsonData.message).to.eql(\"Password reset email sent\");\r",
+                  "  });\r",
+                  "}\r",
+                  "// ========================= If failure ===============================\r",
+                  "else if (codeStatus === 400) {\r",
+                  "  if (jsonData.message === \"email is required\") {\r",
+                  "    pm.test(\"Response contains error message for email is required\", () => {\r",
+                  "      pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "      pm.expect(jsonData.message).to.eql(\"email is required\");\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"this user not exists\") {\r",
+                  "    pm.test(\"Response contains error message this user not exists\", () => {\r",
+                  "      pm.expect(jsonData.status).to.eql(\"error\");\r",
+                  "      pm.expect(jsonData.message).to.eql(\"this user not exists\");\r",
+                  "    });\r",
+                  "  }\r",
+                  "}\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"email1@gmail.com\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{BASE_URL}}/api/users/forget-password",
+            "description": "Allows users to request a password reset link."
+          },
+          "response": []
+        },
+        {
+          "name": "resetPassword",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();\r",
+                  "let codeStatus = jsonData.code;\r",
+                  "pm.test(\"Status code is \" + codeStatus, () => {\r",
+                  "  pm.response.to.have.status(codeStatus);\r",
+                  "});\r",
+                  "// ========================= If success ===============================\r",
+                  "if (codeStatus === 200) {\r",
+                  "  pm.test(\"Response contains success message\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"success\");\r",
+                  "    pm.expect(jsonData.message).to.eql(\"Password has been reset successfully\");\r",
+                  "  });\r",
+                  "}\r",
+                  "// ========================= If failure ===============================\r",
+                  "else if (codeStatus === 400) {\r",
+                  "  if (jsonData.message === \"New password is required\") {\r",
+                  "    pm.test(\"Response contains error message for email is required\", () => {\r",
+                  "      pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "      pm.expect(jsonData.message).to.eql(\"New password is required\");\r",
+                  "    });\r",
+                  "  } else if (jsonData.message === \"Token is invalid or has expired\") {\r",
+                  "    pm.test(\r",
+                  "      \"Response contains error message for Token is invalid or has expired\",\r",
+                  "      () => {\r",
+                  "        pm.expect(jsonData.status).to.eql(\"error\");\r",
+                  "        pm.expect(jsonData.message).to.eql(\"Token is invalid or has expired\");\r",
+                  "      }\r",
+                  "    );\r",
+                  "  } else if (jsonData.message === \"Weak password\") {\r",
+                  "    pm.test(\"Response contains error message for Weak password\", () => {\r",
+                  "      pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "      pm.expect(jsonData.message).to.eql(\"Weak password\");\r",
+                  "    });\r",
+                  "  }\r",
+                  "} else if (codeStatus === 404) {\r",
+                  "  pm.test(\"Response contains error message User not found\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"error\");\r",
+                  "    pm.expect(jsonData.message).to.eql(\"User not found\");\r",
+                  "  });\r",
+                  "}\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "",
+                "value": "",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"password\": \"StrongPassword@#1\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{BASE_URL}}/api/users/reset-password/{{JWT}}",
+            "description": "Used to change a user's password after receiving the password reset link."
+          },
+          "response": []
+        },
+        {
+          "name": "confirmDelete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let jsonData = pm.response.json();\r",
+                  "let codeStatus = jsonData.code;\r",
+                  "pm.test(\"Status code is \" + codeStatus, () => {\r",
+                  "  pm.response.to.have.status(codeStatus);\r",
+                  "});\r",
+                  "// ========================= If success ===============================\r",
+                  "if (codeStatus === 200) {\r",
+                  "  pm.environment.set(\"JWT\", jsonData.token);\r",
+                  "  pm.test(\"Response contains success message\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"success\");\r",
+                  "    pm.expect(jsonData.message).to.eql(\"user deleted successfully\");\r",
+                  "  });\r",
+                  "}\r",
+                  "// ========================= If failure ===============================\r",
+                  "else if (codeStatus === 400) {\r",
+                  "  pm.test(\"Response contains error message for Password is required\", () => {\r",
+                  "    pm.expect(jsonData.status).to.eql(\"fail\");\r",
+                  "    pm.expect(jsonData.message).to.eql(\"Token is invalid or has expired\");\r",
+                  "  });\r",
+                  "}\r",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{BASE_URL}}/api/users/delete/{{JWT}}",
+            "description": "This request confirms the deletion of a user account. It requires a token that was generated during the deletion request to finalize the process."
+          },
+          "response": []
+        }
+      ],
+      "description": "This folder contains all the endpoints related to authentication and registration processes. It focuses on securing user access through login, registration, and password recovery operations."
+    }
+  ]
+}
